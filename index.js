@@ -4,7 +4,13 @@ require('./db/config');
 const User = require("./db/User");
 const product = require("./db/Product");
 const Product = require('./db/Product');
+
+const Jwt = require('jsonwebtoken');
+const jwtkey = 'e-comm';
+
 const app = express();
+
+
 
 app.use(express.json());
 app.use(cors());
@@ -13,28 +19,41 @@ app.use(cors());
 // -----------------------SignUp---------------------------
 
 app.post("/register", async (req,resp)=>{
-    let user = new User(req.body);
+    var name = req.body.name;
+    var email = req.body.email;
+    var password = req.body.password;
+
+    let user = new User({name:name , email:email, password:password})    
+    // let user = new User(req.body);
     let result = await user.save();
     result = result.toObject();
     delete result.password
     resp.send(result);
+
+
 });
 
 // ---------------------------Login--------------------------------
 
 app.post("/login", async (req,resp)=>{
-    let user = await User.findOne(req.body).select("-password");
+    // let user = await User.findOne(req.body).select("-password");
 
-    if(req.body.password && req.body.email){
-        if(user)
+  var password = req.body.password ;
+  var email = req.body.email;
+
+   let user = await User.findOne({email: email});
+
+    if(user){
+
+        if(user.password === password)
         {
-            resp.send(user)
+            resp.status(200).send({result:'Login successfuly',statuscode:200})
         }else{
-            resp.send({result:'No User Found'})
+            resp.status(400).send({result:'Invalid Credintial',statuscode:400})
         }
     }
     else {
-        resp.send({result : 'User Not Available'})
+        resp.status(500).send({result : 'User Not Available',statuscode:500})
     }
   
 });
@@ -94,6 +113,19 @@ app.put("/product/:id", async(req,resp)=>{
     )
     resp.send(result)
 });
+
+
+app.get("/search/:key", async (req, resp)=>{
+    let result = await Product.find({
+        "$or" :[
+            { name: { $regex: req.params.key }},
+            { company: { $regex: req.params.key }},
+            { category: { $regex: req.params.key }}
+
+        ]
+    });
+    resp.send(result)
+})
 
 
 app.listen(5000)
